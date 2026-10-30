@@ -1,0 +1,151 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Catalog ─────────────────────────────────────────────────────────
+
+model Product {
+  id          String   @id @default(uuid())
+  slug        String   @unique
+  title       String
+  description String   @default("")
+  price       Float
+  oldPrice    Float?
+  currency    String   @default("USD")
+  category    String   @default("Electronics")
+  imageUrl    String   @default("")
+  gallery     String   @default("[]") // JSON array of image URLs
+  buyUrl      String   @default("")
+  badge       String   @default("") // "" | "new" | "featured"
+  brand       String   @default("") // seller / company name (filterable)
+  video       String   @default("") // optional product video (data URL or https URL)
+  sold        Int      @default(0)
+  rating      Float    @default(0)
+  reviews     Int      @default(0)
+  published   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([published, badge])
+  @@index([category])
+}
+
+// ─── Special events (Flash Sale banner) ──────────────────────────────
+
+model StoreEvent {
+  id        String   @id @default(uuid())
+  title     String
+  subtitle  String   @default("")
+  emoji     String   @default("⚡")
+  color     String   @default("amber")
+  startsAt  DateTime
+  endsAt    DateTime
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+// ─── Visitor accounts (favorites/cart sync) ──────────────────────────
+
+model User {
+  id           String   @id @default(uuid())
+  username     String   @unique
+  displayName  String   @default("")
+  passwordHash String
+  favorites    String   @default("[]") // JSON array of slugs
+  cart         String   @default("[]") // JSON array of {slug,qty}
+  country      String? // ISO-3166 alpha-2 of the shopper's country (currency preference)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// ─── Public comments / suggestions (Shoutouts) ───────────────────────
+
+model Suggestion {
+  id        String   @id @default(uuid())
+  name      String   @default("") // optional display name
+  message   String
+  hidden    Boolean  @default(false) // owner can hide without deleting
+  createdAt DateTime @default(now())
+
+  @@index([hidden, createdAt])
+}
+
+// ─── Newsletter subscribers ──────────────────────────────────────────
+
+model Subscriber {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+}
+
+// ─── Privacy-friendly analytics events ───────────────────────────────
+
+model TrackEvent {
+  id        String   @id @default(uuid())
+  type      String // visit | product_view | search | cart_add | buy_click | link_click | sign_in | owner_login
+  slug      String? // product slug when relevant
+  term      String? // search term
+  device    String   @default("desktop") // desktop | mobile
+  path      String?
+  username  String? // signed-in shopper this event is attributed to (never IP/fingerprint)
+  createdAt DateTime @default(now())
+
+  @@index([type, createdAt])
+  @@index([slug])
+  @@index([username])
+}
+
+model HeroSlide {
+  id          String   @id @default(uuid())
+  order       Int      @default(0) // lower shows first
+  mediaType   String   @default("image") // image | video
+  media       String   // data URL or https URL
+  headline    String   @default("")
+  subHeadline String   @default("")
+  ctaLabel    String   @default("")
+  ctaUrl      String   @default("") // hash route (#/products) or external URL
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+}
+
+model Popup {
+  id             String   @id @default(uuid())
+  name           String // admin-facing label
+  type           String   @default("card") // portrait | wheel | card
+  layout         String   @default("portrait") // portrait | landscape | square
+  title          String   @default("")
+  body           String   @default("")
+  mediaType      String   @default("image") // image | video | none
+  media          String   @default("")
+  ctaLabel       String   @default("")
+  ctaUrl         String   @default("")
+  segments       String   @default("[]") // wheel: JSON array of prize labels
+  delaySeconds   Int      @default(5)
+  oncePerVisitor Boolean  @default(true)
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+}
+
+model CustomWidget {
+  id           String   @id @default(uuid())
+  name         String // admin-facing label
+  html         String   @default("")
+  css          String   @default("")
+  js           String   @default("")
+  placement    String   @default("popup") // popup | home
+  delaySeconds Int      @default(5)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+}
+
+// ─── Site settings (single row, key "site") ──────────────────────────
+
+model Setting {
+  key   String @id
+  value String // JSON-encoded value
+}
